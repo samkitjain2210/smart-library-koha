@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Library Koha Frontend</title>
+    <style>
+        /* --- CSS VARIABLES & RESET --- */
+        :root {
+            --primary: #2563eb; /* Academic Blue */
+            --primary-dark: #1e40af;
+            --secondary: #f59e0b; /* Accent Amber */
+            --bg-light: #f3f4f6;
+            --surface: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --radius: 12px;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-light);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding-bottom: 80px; /* Space for mobile nav/chat */
+        }
+
+        a { text-decoration: none; color: inherit; cursor: pointer; }
+        button { cursor: pointer; font-family: inherit; border: none; }
+        input, textarea, select { font-family: inherit; }
+
+        /* --- UTILITIES --- */
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+        .hidden { display: none !important; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 0.5rem; }
+        .gap-4 { gap: 1rem; }
+        .mt-4 { margin-top: 1rem; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: 700; }
+        .text-sm { font-size: 0.875rem; }
+        .text-primary { color: var(--primary); }
+
+        /* --- COMPONENTS --- */
+        
+        /* Toast Notification */
+        #toast-container {
+            position: fixed; top: 20px; right: 20px; z-index: 9999;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .toast {
+            background: var(--text-main); color: white; padding: 12px 24px;
+            border-radius: var(--radius); box-shadow: var(--shadow);
+            animation: slideIn 0.3s ease-out; font-size: 0.9rem;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* Header */
+        header {
+            background: var(--surface);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            position: sticky; top: 0; z-index: 100;
+            padding: 1rem 0;
+        }
+        .header-content { display: flex; align-items: center; justify-content: space-between; }
+        .logo { font-size: 1.5rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+        .nav-links button {
+            background: transparent; color: var(--text-muted); font-weight: 500;
+            padding: 0.5rem 1rem; border-radius: 6px; transition: 0.2s;
+        }
+        .nav-links button:hover, .nav-links button.active { background: var(--bg-light); color: var(--primary); }
+
+        /* Search Section */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; padding: 3rem 1rem; text-align: center; border-radius: 0 0 20px 20px; margin-bottom: 2rem;
+        }
+        .search-box {
+            position: relative; max-width: 600px; margin: 1.5rem auto 0;
+            background: white; border-radius: 50px; padding: 0.5rem;
+            display: flex; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .search-input {
+            flex: 1; border: none; outline: none; padding: 0.8rem 1.5rem;
+            font-size: 1rem; border-radius: 50px;
+        }
+        .voice-btn {
+            background: var(--bg-light); width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin-right: 0.5rem; color: var(--text-main); transition: 0.2s;
+        }
+        .voice-btn.listening { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .search-btn {
+            background: var(--primary); color: white; padding: 0.8rem 1.5rem;
+            border-radius: 50px; font-weight: 600; transition: 0.2s;
+        }
+        .search-btn:hover { background: var(--primary-dark); }
+
+        /* Content Grids */
+        .grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem; margin-bottom: 2rem;
+        }
+        .card {
+            background: var(--surface); border-radius: var(--radius);
+            overflow: hidden; box-shadow: var(--shadow); transition: transform 0.2s;
+            border: 1px solid var(--border); display: flex; flex-direction: column;
+        }
+        .card:hover { transform: translateY(-5px); }
+        .card-img {
+            height: 160px; background: #ddd; object-fit: cover; width: 100%;
+        }
+        .card-body { padding: 1rem; flex: 1; display: flex; flex-direction: column; }
+        .card-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-main); }
+        .card-meta { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; }
+        .badge {
+            display: inline-block; padding: 0.25rem 0.75rem; border-radius: 99px;
+            font-size: 0.75rem; font-weight: 600; margin-top: auto;
+        }
+        .badge.available { background: #d1fae5; color: #065f46; }
+        .badge.issued { background: #fee2e2; color: #991b1b; }
+
+        /* Notices (Standing Messages) */
+        .notices-scroll {
+            display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem;
+            margin-bottom: 2rem; -webkit-overflow-scrolling: touch;
+        }
+        .notice-card {
+            min-width: 280px; background: #fff3cd; border-left: 4px solid var(--secondary);
+            padding: 1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* --- CHATBOT --- */
+        .chatbot-fab {
+            position: fixed; bottom: 20px; right: 20px;
+            width: 60px; height: 60px; background: var(--primary);
+            color: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+            font-size: 1.5rem; z-index: 900;
+        }
+        .chatbot-window {
+            position: fixed; bottom: 90px; right: 20px;
+            width: 320px; height: 450px; background: var(--surface);
+            border-radius: var(--radius); box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            display: flex; flex-direction: column; z-index: 900;
+            overflow: hidden; border: 1px solid var(--border);
+            transform: scale(0); transform-origin: bottom right; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .chatbot-window.open { transform: scale(1); }
+        .chat-header {
+            background: var(--primary); color: white; padding: 1rem;
+            font-weight: bold; display: flex; justify-content: space-between; align-items: center;
+        }
+        .chat-body { flex: 1; padding: 1rem; overflow-y: auto; background: var(--bg-light); display: flex; flex-direction: column; gap: 10px; }
+        .chat-footer { padding: 0.8rem; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 8px; }
+        .chat-input { flex: 1; border: 1px solid var(--border); border-radius: 20px; padding: 8px 15px; outline: none; }
+        .msg { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 0.9rem; line-height: 1.4; word-wrap: break-word; }
+        .msg.bot { background: white; align-self: flex-start; border-bottom-left-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .msg.user { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+
+        /* --- ADMIN PANEL --- */
+        .admin-layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 70px); gap: 2rem; padding-top: 2rem; }
+        .sidebar { background: var(--surface); padding: 1rem; border-radius: var(--radius); height: fit-content; }
+        .sidebar-item {
+            display: block; width: 100%; padding: 0.8rem 1rem;
+            text-align: left; background: transparent; border-radius: 6px; margin-bottom: 0.5rem;
+            color: var(--text-muted); font-weight: 500;
+        }
+        .sidebar-item:hover, .sidebar-item.active { background: #eff6ff; color: var(--primary); }
+        .admin-content { background: var(--surface); padding: 2rem; border-radius: var(--radius); }
+        .stat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: var(--bg-light); padding: 1.5rem; border-radius: var(--radius); text-align: center; }
+        .stat-num { font-size: 2rem; font-weight: 800; color: var(--primary); }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+        .form-control {
+            width: 100%; padding: 0.6rem; border: 1px solid var(--border);
+            border-radius: 6px; font-size: 0.95rem;
+        }
+        .btn-primary { background: var(--primary); color: white; padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; }
+        .btn-danger { background: #ef4444; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; font-size: 0.8rem; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .table th, .table td { text-align: left; padding: 0.8rem; border-bottom: 1px solid var(--border); }
+        .table th { color: var(--text-muted); font-weight: 600; font-size: 0.85rem; }
+
+        /* Login Modal */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .modal-box {
+            background: white; width: 90%; max-width: 400px; padding: 2rem;
+            border-radius: var(--radius); text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .admin-layout { grid-template-columns: 1fr; }
+            .stat-cards { grid-template-columns: 1fr; }
+            .hero { padding: 2rem 1rem; }
+            .search-box { flex-direction: row; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container"></div>
+
+    <!-- HEADER -->
+    <header>
+        <div class="container header-content">
+            <div class="logo">
+                <span>📚</span> SmartLib
+            </div>
+            <nav class="nav-links">
+                <button onclick="router.navigate('home')" id="nav-home" class="active">Home</button>
+                <button onclick="router.navigate('search')" id="nav-search">Search</button>
+                <!-- Hidden Admin Link for Demo -->
+                <button onclick="router.checkAdmin()" style="color: var(--primary);">Admin</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- MAIN APP AREA -->
+    <main id="app">
+        <!-- Content injected by JS -->
+    </main>
+
+    <!-- CHATBOT -->
+    <div class="chatbot-fab" onclick="chatbot.toggle()">🤖</div>
+    <div class="chatbot-window" id="chat-window">
+        <div class="chat-header">
+            <span>Library Assistant</span>
+            <span style="cursor:pointer" onclick="chatbot.toggle()">×</span>
+        </div>
+        <div class="chat-body" id="chat-messages">
+            <div class="msg bot">Hello! Ask me about timings, books, or fines.</div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" class="chat-input" id="chat-input" placeholder="Type a question..." onkeypress="chatbot.handleEnter(event)">
+            <button class="btn-primary" onclick="chatbot.send()">Send</button>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        /**
+         * MOCK DATA & STATE MANAGEMENT
+         * Simulating Database and API Responses
+         */
+        const defaultData = {
+            books: [
+                { id: 1, title: "Data Structures and Algorithms", author: "Mark Allen", isbn: "978-XYZ", available: true, cover: "https://picsum.photos/seed/book1/300/200" },
+                { id: 2, title: "Introduction to Python", author: "Guido R.", isbn: "978-PY", available: false, cover: "https://picsum.photos/seed/book2/300/200" },
+                { id: 3, title: "The Great Gatsby", author: "F. Scott Fitzgerald", isbn: "978-FS", available: true, cover: "https://picsum.photos/seed/book3/300/200" },
+                { id: 4, title: "Clean Code", author: "Robert Martin", isbn: "978-CM", available: true, cover: "https://picsum.photos/seed/book4/300/200" },
+                { id: 5, title: "Artificial Intelligence", author: "Stuart Russell", isbn: "978-AI", available: false, cover: "https://picsum.photos/seed/book5/300/200" },
+            ],
+            notices: [
+                { id: 1, title: "Library Closed", message: "Library will remain closed on Sunday for maintenance.", priority: "high" },
+                { id: 2, title: "Fine Waiver", message: "Late fine waiver available for students with good attendance.", priority: "normal" }
+            ],
+            chatbotQA: [
+                { keywords: ["timing", "open", "hours", "time"], answer: "📅 The library is open from 9:00 AM to 5:00 PM on weekdays." },
+                { keywords: ["fine", "money", "cost"], answer: "💰 The fine is ₹2 per day for general books and ₹5 for reference books." },
+                { keywords: ["issue", "borrow", "limit"], answer: "📚 Students can issue up to 3 books for 14 days." },
+                { keywords: ["contact", "phone", "email"], answer: "📞 Call us at 555-0199 or email librarian@smartlib.edu" }
+            ],
+            isAdmin: false
+        };
+
+        // Initialize LocalStorage if empty
+        if (!localStorage.getItem('smartLibData')) {
+            localStorage.setItem('smartLibData', JSON.stringify(defaultData));
+        }
+
+        // Store Interface
+        const store = {
+            get: () => JSON.parse(localStorage.getItem('smartLibData')),
+            update: (newData) => localStorage.setItem('smartLibData', JSON.stringify(newData)),
+            getBooks: () => store.get().books,
+            getNotices: () => store.get().notices,
+            getChatQA: () => store.get().chatbotQA
+        };
+
+        /**
+         * UI UTILITIES
+         */
+        const ui = {
+            toast: (msg) => {
+                const container = document.getElementById('toast-container');
+                const el = document.createElement('div');
+                el.className = 'toast';
+                el.innerText = msg;
+                container.appendChild(el);
+                setTimeout(() => el.remove(), 3000);
+            },
+            loading: () => `<div class="text-center" style="padding:2rem;">Loading data from Koha API...</div>`
+        };
+
+        /**
+         * ROUTER
+         */
+        const router = {
+            currentPage: 'home',
+            navigate: (page, params = {}) => {
+                router.currentPage = page;
+                const app = document.getElementById('app');
+                
+                // Update Nav State
+                document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
+                const activeBtn = document.getElementById(`nav-${page}`);
+                if(activeBtn) activeBtn.classList.add('active');
+
+                // Render Views
+                if (page === 'home') views.renderHome(app);
+                if (page === 'search') views.renderSearch(app, params.query);
+                if (page === 'admin-login') views.renderAdminLogin(app);
+                if (page === 'admin-dashboard') views.renderAdminDashboard(app);
+                
+                window.scrollTo(0,0);
+            },
+            checkAdmin: () => {
+                const data = store.get();
+                if(data.isAdmin) router.navigate('admin-dashboard');
+                else router.navigate('admin-login');
+            },
+            logout: () => {
+                const data = store.get();
+                data.isAdmin = false;
+                store.update(data);
+                router.navigate('home');
+                ui.toast("Logged out successfully");
+            }
+        };
+
+        /**
+         * VIEWS
+         */
+        const views = {
+            renderHome: (container) => {
+                const notices = store.getNotices();
+                const books = store.getBooks().slice(0, 4); // Featured books
+                
+                let noticesHTML = notices.map(n => `
+                    <div class="notice-card">
+                        <strong>${n.title}</strong><br>
+                        <span class="text-sm">${n.message}</span>
+                    </div>
+                `).join('');
+
+                let booksHTML = books.map(b => components.bookCard(b)).join('');
+
+                container.innerHTML = `
+                    <div class="hero">
+                        <h1>Welcome to Smart Library</h1>
+                        <p>Your gateway to knowledge powered by Koha</p>
+                        <div class="search-box">
+                            <button class="voice-btn" id="home-voice-btn" onclick="voiceSearch.start('home')">🎙️</button>
+                            <input type="text" class="search-input" id="home-search-input" placeholder="Search books by title, author...">
+                            <button class="search-btn" onclick="views.triggerSearch('home')">Search</button>
+                        </div>
+                    </div>
+                    
+                    <div class="container">
+                        <h3 class="mb-2">📢 Notices & Updates</h3>
+                        <div class="notices-scroll">
+                            ${noticesHTML}
+                        </div>
+
+                        <h3>📚 New Arrivals</h3>
+                        <div class="grid mt-4">
+                            ${booksHTML}
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderSearch: (container, query = '') => {
+                // Simulating initial load before API call
+                container.innerHTML = `
+                    <div class="container mt-4">
+                        <div class="search-box" style="margin: 0 0 2rem 0; max-width: 100%;">
+                            <button class="voice-btn" onclick="voiceSearch.start('search')">🎙️</button>
+                            <input type="text" class="search-input" id="page-search-input" value="${query}" placeholder="Refine search...">
+                            <button class="search-btn" onclick="views.triggerSearch('search')">Search</button>
+                        </div>
+                        <div id="search-results-area">
+                            <!-- Results go here -->
+                        </div>
+                    </div>
+                `;
+
+                if (query) views.performSearch(query);
+            },
+
+            triggerSearch: (context) => {
+                const id = context === 'home' ? 'home-search-input' : 'page-search-input';
+                const val = document.getElementById(id).value;
+                if(val) {
+                    router.navigate('search', { query: val });
+                } else {
+                    ui.toast("Please enter a keyword");
+                }
+            },
+
+            performSearch: async (query) => {
+                const area = document.getElementById('search-results-area');
+                area.innerHTML = ui.loading();
+
+                // SIMULATE KOA API CALL
+                await new Promise(r => setTimeout(r, 800)); // Network latency
+
+                const books = store.getBooks();
+                const results = books.filter(b => 
+                    b.title.toLowerCase().includes(query.toLowerCase()) || 
+                    b.author.toLowerCase().includes(query.toLowerCase())
+                );
+
+                if (results.length === 0) {
+                    area.innerHTML = `<div class="text-center" style="padding:2rem; color: #666;">No books found in Koha database for "${query}"</div>`;
+                } else {
+                    area.innerHTML = `
+                        <p class="text-muted mb-2">Found ${results.length} results for "${query}"</p>
+                        <div class="grid">
+                            ${results.map(b => components.bookCard(b)).join('')}
+                        </div>
+                    `;
+                }
+            },
+
+            renderAdminLogin: (container) => {
+                container.innerHTML = `
+                    <div class="container" style="max-width: 400px; padding-top: 4rem;">
+                        <div class="card" style="padding: 2rem;">
+                            <h2 class="text-center mb-4">Admin Login</h2>
+                            <form onsubmit="admin.login(event)">
+                                <div class="form-group">
+                                    <label>Username</label>
+                                    <input type="text" id="admin-user" class="form-control" placeholder="admin">
+                                </div>
+                                <div class="form-group">
+                                    <label>Password</label>
+                                    <input type="password" id="admin-pass" class="form-control" placeholder="admin">
+                                </div>
+                                <button type="submit" class="btn-primary" style="width:100%">Login</button>
+                            </form>
+                            <p class="text-center mt-4 text-sm text-muted">Hint: admin / admin</p>
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderAdminDashboard: (container, tab = 'dashboard') => {
+                const data = store.get();
+                
+                let content = '';
+                if (tab === 'dashboard') {
+                    content = `
+                        <h2>Dashboard Overview</h2>
+                        <div class="stat-cards mt-4">
+                            <div class="stat-card">
+                                <div class="stat-num">${data.books.length}</div>
+                                <div>Total Books</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-num">${data.chatbotQA.length}</div>
+                                <div>Chatbot Rules</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-num">Active</div>
+                                <div>Koha API Status</div>
+                            </div>
+                        </div>
+                    `;
+                } else if (tab === 'messages') {
+                    content = `
+                        <div class="flex justify-between items-center mb-4">
+                            <h2>Manage Notices</h2>
+                        </div>
+                        <div class="card" style="padding: 1.5rem; margin-bottom: 2rem;">
+                            <h4>Add New Notice</h4>
+                            <form onsubmit="admin.addNotice(event)" class="mt-4">
+                                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <input type="text" id="notice-title" class="form-control" placeholder="Title" required>
+                                    <select id="notice-priority" class="form-control">
+                                        <option value="normal">Normal</option>
+                                        <option value="high">High Priority</option>
+                                    </select>
+                                </div>
+                                <textarea id="notice-msg" class="form-control mt-4" rows="2" placeholder="Notice message..." required></textarea>
+                                <button class="btn-primary mt-4">Publish Notice</button>
+                            </form>
+                        </div>
+                        <h4>Active Notices</h4>
+                        <table class="table">
+                            <thead><tr><th>Title</th><th>Priority</th><th>Action</th></tr></thead>
+                            <tbody>
+                                ${data.notices.map(n => `
+                                    <tr>
+                                        <td>${n.title}</td>
+                                        <td><span class="badge ${n.priority === 'high' ? 'issued' : 'available'}">${n.priority}</span></td>
+                                        <td><button class="btn-danger" onclick="admin.deleteNotice(${n.id})">Delete</button></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else if (tab === 'chatbot') {
+                    content = `
+                        <h2>Chatbot Configuration</h2>
+                        <div class="card" style="padding: 1.5rem; margin-bottom: 2rem;">
+                            <h4>Add Training Data</h4>
+                            <p class="text-sm text-muted">Keywords (comma separated)</p>
+                            <form onsubmit="admin.addChatRule(event)" class="mt-4">
+                                <input type="text" id="cb-keywords" class="form-control" placeholder="timing, open, hours" required>
+                                <input type="text" id="cb-answer" class="form-control mt-4" placeholder="The answer text..." required>
+                                <button class="btn-primary mt-4">Add Rule</button>
+                            </form>
+                        </div>
+                        <h4>Existing Rules</h4>
+                        <div class="grid">
+                            ${data.chatbotQA.map((item, idx) => `
+                                <div class="card" style="padding:1rem">
+                                    <strong>${item.keywords.join(', ')}</strong>
+                                    <p class="text-sm mt-2">${item.answer}</p>
+                                    <button class="btn-danger mt-4" onclick="admin.deleteRule(${idx})">Remove</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                container.innerHTML = `
+                    <div class="container admin-layout">
+                        <aside class="sidebar">
+                            <button class="sidebar-item ${tab==='dashboard'?'active':''}" onclick="views.renderAdminDashboard(document.getElementById('app'), 'dashboard')">Dashboard</button>
+                            <button class="sidebar-item ${tab==='messages'?'active':''}" onclick="views.renderAdminDashboard(document.getElementById('app'), 'messages')">Notices</button>
+                            <button class="sidebar-item ${tab==='chatbot'?'active':''}" onclick="views.renderAdminDashboard(document.getElementById('app'), 'chatbot')">Chatbot AI</button>
+                            <button class="sidebar-item" onclick="router.logout()">Logout</button>
+                        </aside>
+                        <section class="admin-content">
+                            ${content}
+                        </section>
+                    </div>
+                `;
+            }
+        };
+
+        const components = {
+            bookCard: (book) => `
+                <div class="card">
+                    <img src="${book.cover}" class="card-img" alt="Cover">
+                    <div class="card-body">
+                        <div class="card-title">${book.title}</div>
+                        <div class="card-meta">By ${book.author}</div>
+                        <div class="card-meta text-sm">ISBN: ${book.isbn}</div>
+                        <span class="badge ${book.available ? 'available' : 'issued'}">
+                            ${book.available ? 'Available' : 'Issued'}
+                        </span>
+                    </div>
+                </div>
+            `
+        };
+
+        /**
+         * ADMIN LOGIC
+         */
+        const admin = {
+            login: (e) => {
+                e.preventDefault();
+                const u = document.getElementById('admin-user').value;
+                const p = document.getElementById('admin-pass').value;
+                if(u === 'admin' && p === 'admin') {
+                    const data = store.get();
+                    data.isAdmin = true;
+                    store.update(data);
+                    router.navigate('admin-dashboard');
+                    ui.toast("Welcome Admin!");
+                } else {
+                    ui.toast("Invalid Credentials");
+                }
+            },
+            addNotice: (e) => {
+                e.preventDefault();
+                const data = store.get();
+                const newNotice = {
+                    id: Date.now(),
+                    title: document.getElementById('notice-title').value,
+                    priority: document.getElementById('notice-priority').value,
+                    message: document.getElementById('notice-msg').value
+                };
+                data.notices.unshift(newNotice);
+                store.update(data);
+                views.renderAdminDashboard(document.getElementById('app'), 'messages');
+                ui.toast("Notice Published");
+            },
+            deleteNotice: (id) => {
+                if(!confirm("Delete this notice?")) return;
+                const data = store.get();
+                data.notices = data.notices.filter(n => n.id !== id);
+                store.update(data);
+                views.renderAdminDashboard(document.getElementById('app'), 'messages');
+            },
+            addChatRule: (e) => {
+                e.preventDefault();
+                const data = store.get();
+                const keys = document.getElementById('cb-keywords').value.split(',').map(s=>s.trim());
+                const ans = document.getElementById('cb-answer').value;
+                data.chatbotQA.push({ keywords: keys, answer: ans });
+                store.update(data);
+                views.renderAdminDashboard(document.getElementById('app'), 'chatbot');
+                ui.toast("Rule Added");
+            },
+            deleteRule: (index) => {
+                const data = store.get();
+                data.chatbotQA.splice(index, 1);
+                store.update(data);
+                views.renderAdminDashboard(document.getElementById('app'), 'chatbot');
+            }
+        };
+
+        /**
+         * CHATBOT ENGINE (Rule Based)
+         */
+        const chatbot = {
+            isOpen: false,
+            toggle: () => {
+                chatbot.isOpen = !chatbot.isOpen;
+                const win = document.getElementById('chat-window');
+                if(chatbot.isOpen) win.classList.add('open');
+                else win.classList.remove('open');
+            },
+            handleEnter: (e) => {
+                if(e.key === 'Enter') chatbot.send();
+            },
+            send: () => {
+                const input = document.getElementById('chat-input');
+                const text = input.value.trim();
+                if(!text) return;
+
+                // Add User Message
+                chatbot.appendMsg(text, 'user');
+                input.value = '';
+
+                // Simulate Thinking Delay
+                setTimeout(() => {
+                    const response = chatbot.getResponse(text);
+                    chatbot.appendMsg(response, 'bot');
+                }, 500);
+            },
+            appendMsg: (text, sender) => {
+                const container = document.getElementById('chat-messages');
+                const div = document.createElement('div');
+                div.className = `msg ${sender}`;
+                div.innerHTML = text;
+                container.appendChild(div);
+                container.scrollTop = container.scrollHeight;
+            },
+            getResponse: (input) => {
+                const lower = input.toLowerCase();
+                const qa = store.getChatQA();
+                
+                // Search for keyword match
+                for(let item of qa) {
+                    if(item.keywords.some(k => lower.includes(k))) {
+                        return item.answer;
+                    }
+                }
+                
+                // Fallback to custom messages (Standing instructions)
+                const notices = store.getNotices();
+                const highPriority = notices.find(n => n.priority === 'high');
+                if(highPriority && (lower.includes('notice') || lower.includes('important'))) {
+                    return `⚠️ ${highPriority.message}`;
+                }
+
+                return "I'm sorry, I didn't understand that. You can ask me about <b>timings</b>, <b>fines</b>, or <b>book limits</b>.";
+            }
+        };
+
+        /**
+         * VOICE SEARCH (Web Speech API)
+         */
+        const voiceSearch = {
+            recognition: null,
+            init: () => {
+                if ('webkitSpeechRecognition' in window) {
+                    voiceSearch.recognition = new webkitSpeechRecognition();
+                    voiceSearch.recognition.continuous = false;
+                    voiceSearch.recognition.lang = 'en-US';
+                    
+                    voiceSearch.recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        // If on home, route to search with query
+                        router.navigate('search', { query: transcript });
+                        // If on search, trigger search
+                        if(router.currentPage === 'search') {
+                            document.getElementById('page-search-input').value = transcript;
+                            views.performSearch(transcript);
+                        }
+                    };
+
+                    voiceSearch.recognition.onend = () => {
+                        document.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('listening'));
+                    };
+                } else {
+                    console.log("Web Speech API not supported");
+                }
+            },
+            start: (context) => {
+                if(!voiceSearch.recognition) {
+                    ui.toast("Voice search not supported in this browser.");
+                    return;
+                }
+                // Stop any existing
+                try { voiceSearch.recognition.stop(); } catch(e){}
+                
+                // Visual feedback
+                const btnId = context === 'home' ? 'home-voice-btn' : 'search'; // simplified logic
+                // We'll just toggle all buttons for visual effect in this demo
+                document.querySelectorAll('.voice-btn').forEach(b => b.classList.add('listening'));
+                
+                ui.toast("Listening... Speak now.");
+                voiceSearch.recognition.start();
+            }
+        };
+
+        // --- INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            voiceSearch.init();
+            router.navigate('home');
+        });
+
+    </script>
+</body>
+</html>
